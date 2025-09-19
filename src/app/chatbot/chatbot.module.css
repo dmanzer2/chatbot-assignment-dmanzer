@@ -1,0 +1,46 @@
+/* Chatbot page-specific styles */
+
+ .centeredCard {
+   position: fixed;
+   left: 50%;
+   transform: translateX(-50%);
+   bottom: 3%;
+   width: 100%;
+   max-width: 64rem;
+   padding-bottom: 32px; /* Ensure input is always visible */
+}
+
+.gradientSection {
+  background: linear-gradient(to bottom, #F0F7FF 0%, #E1E9F1 100%);
+}
+
+.chatScroll {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.imagePreviewBlur {
+  transition: filter 0.2s;
+}
+
+.imagePreviewBlur:hover {
+  filter: blur(2px);
+}
+
+.xIcon {
+  height: 90%;
+  width: 90%;
+}
+
+.dropzone {
+  transition: background-color 0.2s;
+}
+
+.dropzone:hover {
+  background-color: #f3f4f6; /* Tailwind gray-100 */
+  cursor: grab;
+}
+
+.dropzone:active {
+  cursor: grabbing;
+}
