@@ -1,6 +1,6 @@
 "use client";
 import { useId, useRef, useState, useEffect } from "react";
-import { ArrowUpIcon, XMarkIcon } from "@heroicons/react/24/solid";
+import { ArrowUpIcon, XMarkIcon, PlusIcon, MinusIcon } from "@heroicons/react/24/solid";
 import { RectangleStackIcon, PhotoIcon } from "@heroicons/react/24/outline";
 import Image from "next/image";
 import styles from "./chatbot.module.css";
@@ -186,7 +186,7 @@ export default function ChatbotImageAnalysis() {
 				<section
 					aria-labelledby={titleId}
 					className={`rounded-2xl p-6 backdrop-blur flex flex-col ${styles.gradientSection}`}
-					style={{ maxHeight: "85vh", minHeight: "400px" }}
+					style={{ maxHeight: "85vh" }}
 				>
 					<h2 id={titleId} className="sr-only">Image analysis workspace</h2>
 
@@ -204,25 +204,22 @@ export default function ChatbotImageAnalysis() {
               ))}
             </div>
 
-						{/* Image area - collapsible */}
-						{imageAreaOpen && (
-							<div className="flex gap-4 items-stretch px-4 mt-8">
-								{/* 2×2 grid, 1/3 width */}
-								<div className="w-1/3 flex flex-col justify-center">
-									<div aria-label="Image slots (max 4)" className="grid grid-cols-2 grid-rows-2 gap-3 h-full">
-										{[0,1,2,3].map((i) => (
-											<div
-												key={i}
-												className="relative aspect-square rounded-2xl border border-gray-200 bg-gray-50 shadow-inner group"
-											>
-												{/* If image exists, show preview, else show placeholder */}
+            {/* Image area - collapsible */}
+            {imageAreaOpen && (
+              <div>
+                {/* Mobile/tablet layout: <768px width */}
+                <div className="block lg:hidden w-full px-2 mt-4">
+                  {/* Previews row: always show 4 slots, side-by-side */}
+                  <div className="flex flex-row gap-3 w-full mb-4">
+                    {[0,1,2,3].map((i) => (
+                      <div key={i} className="relative flex-1 aspect-[16/13] rounded-2xl border border-gray-200 bg-gray-50 shadow-inner group">
                         {previewUrls[i] ? (
                           <>
                             <Image
                               src={previewUrls[i]}
                               alt={`preview-${i}`}
                               fill
-                              sizes="(max-width: 768px) 100vw, 33vw"
+                              sizes="100vw"
                               className="object-cover rounded-2xl transition duration-200 group-hover:opacity-40"
                               style={{ zIndex: 0 }}
                             />
@@ -240,37 +237,101 @@ export default function ChatbotImageAnalysis() {
                             <PhotoIcon className="h-6 w-6" />
                           </div>
                         )}
-											</div>
-										))}
-									</div>
-								</div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Dropzone row */}
+                  <div className="w-full flex items-stretch justify-center">
+                    <div aria-labelledby={dropId} className={`flex flex-col items-center justify-center rounded-2xl border-5 border-dashed border-gray-300 bg-white p-6 text-center w-full transition-colors duration-200 hover:bg-gray-100 cursor-grab active:cursor-grabbing ${styles.dropzone}`}
+                      onClick={handleClickDropzone}
+                      onDrop={handleDrop}
+                      onDragOver={e => e.preventDefault()}
+                    >
+                      <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gray-50">
+                        <RectangleStackIcon className="h-11 w-11 text-gray-500" />
+                      </div>
+                      <h3 id={dropId} className="text-2xl font-semibold text-gray-900">Drag and Drop or<br/>Click to add Images</h3>
+                      <p className="mt-1 text-xs text-gray-500">Only 4 images can be uploaded at a time.</p>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept={ACCEPTED_TYPES.join(",")}
+                        multiple
+                        className="hidden"
+                        onChange={handleFileChange}
+                        disabled={images.length >= MAX_IMAGES}
+                      />
+                      {error && <div className="text-red-500 mt-2 text-sm">{error}</div>}
+                    </div>
+                  </div>
+                </div>
+                {/* Desktop layout: >=768px width */}
+                <div className="hidden lg:flex gap-4 items-stretch px-4 mt-8">
+                  {/* 2×2 grid, 1/3 width */}
+                  <div className="w-1/3 flex flex-col justify-center">
+                    <div aria-label="Image slots (max 4)" className="grid grid-cols-2 grid-rows-2 gap-3 h-full">
+                      {[0,1,2,3].map((i) => (
+                        <div
+                          key={i}
+                          className="relative aspect-[5/4] rounded-2xl border border-gray-200 bg-gray-50 shadow-inner group"
+                        >
+                          {/* If image exists, show preview, else show placeholder */}
+                          {previewUrls[i] ? (
+                            <>
+                              <Image
+                                src={previewUrls[i]}
+                                alt={`preview-${i}`}
+                                fill
+                                sizes="(max-width: 768px) 100vw, 33vw"
+                                className="object-cover rounded-2xl transition duration-200 group-hover:opacity-40"
+                                style={{ zIndex: 0 }}
+                              />
+                              <button
+                                type="button"
+                                className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200 z-10"
+                                onClick={() => handleRemoveImage(i)}
+                                aria-label="Remove image"
+                              >
+                                <XMarkIcon style={{ width: '90%', height: '90%' }} className="text-red-500" />
+                              </button>
+                            </>
+                          ) : (
+                            <div className={`absolute inset-0 flex flex-col items-center justify-center gap-1 text-gray-400 ${styles.imagePreviewBlur}`}>
+                              <PhotoIcon className="h-6 w-6" />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
 
-								{/* Dashed dropzone, 2/3 width, full height */}
-								<div className="w-2/3 flex items-stretch justify-center">
-									<div aria-labelledby={dropId} className={`flex flex-col items-center justify-center rounded-2xl border-5 border-dashed border-gray-300 bg-white p-6 text-center w-full h-full transition-colors duration-200 hover:bg-gray-100 cursor-grab active:cursor-grabbing ${styles.dropzone}`}
-										onClick={handleClickDropzone}
-										onDrop={handleDrop}
-										onDragOver={e => e.preventDefault()}
-									>
-										<div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gray-50">
-											<RectangleStackIcon className="h-11 w-11 text-gray-500" />
-										</div>
-										<h3 id={dropId} className="text-2xl font-semibold text-gray-900">Drag and Drop or<br/>Click to add Images</h3>
-										<p className="mt-1 text-xs text-gray-500">Only 4 images can be uploaded at a time.</p>
-										<input
-											ref={fileInputRef}
-											type="file"
-											accept={ACCEPTED_TYPES.join(",")}
-											multiple
-											className="hidden"
-											onChange={handleFileChange}
-											disabled={images.length >= MAX_IMAGES}
-										/>
-										{error && <div className="text-red-500 mt-2 text-sm">{error}</div>}
-									</div>
-								</div>
-							</div>
-						)}
+                  {/* Dashed dropzone, 2/3 width, full height */}
+                  <div className="w-2/3 flex items-stretch justify-center">
+                    <div aria-labelledby={dropId} className={`flex flex-col items-center justify-center rounded-2xl border-5 border-dashed border-gray-300 bg-white p-6 text-center w-full max-h-[400px] transition-colors duration-200 hover:bg-gray-100 cursor-grab active:cursor-grabbing ${styles.dropzone}`}
+                      onClick={handleClickDropzone}
+                      onDrop={handleDrop}
+                      onDragOver={e => e.preventDefault()}
+                    >
+                      <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gray-50">
+                        <RectangleStackIcon className="h-11 w-11 text-gray-500" />
+                      </div>
+                      <h3 id={dropId} className="text-2xl font-semibold text-gray-900">Drag and Drop or<br/>Click to add Images</h3>
+                      <p className="mt-1 text-xs text-gray-500">Only 4 images can be uploaded at a time.</p>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept={ACCEPTED_TYPES.join(",")}
+                        multiple
+                        className="hidden"
+                        onChange={handleFileChange}
+                        disabled={images.length >= MAX_IMAGES}
+                      />
+                      {error && <div className="text-red-500 mt-2 text-sm">{error}</div>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 					</div>
 
 					{/* Composer with expand/collapse button */}
@@ -296,10 +357,26 @@ export default function ChatbotImageAnalysis() {
                 disabled={loading}
               />
               <div className="absolute right-[53px] top-1/2 -translate-y-1/2">
+                {/* Show icon button on mobile/tablet, text on desktop */}
                 <button
                   type="button"
                   aria-label="Toggle image area"
-                  className="rounded-full bg-gray-200 px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-300 active:scale-95 transition cursor-pointer relative group"
+                  className="rounded-full bg-gray-200 p-2 shadow hover:bg-gray-300 active:scale-95 cursor-pointer relative group block lg:hidden"
+                  onClick={() => setImageAreaOpen((open) => !open)}
+                >
+                  {imageAreaOpen ? (
+                    <MinusIcon className="h-5 w-5" />
+                  ) : (
+                    <PlusIcon className="h-5 w-5" />
+                  )}
+                  <span className="absolute left-1/2 -translate-x-1/2 -top-8 z-20 whitespace-nowrap bg-black text-white text-xs rounded-lg px-3 py-1 opacity-0 group-hover:opacity-100 transition duration-200 shadow-lg pointer-events-none">
+                    {imageAreaOpen ? "Hide image upload area" : "Show image upload area"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  aria-label="Toggle image area"
+                  className="rounded-full bg-gray-200 px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-300 active:scale-95 transition cursor-pointer relative group hidden lg:block"
                   onClick={() => setImageAreaOpen((open) => !open)}
                 >
                   {imageAreaOpen ? "Close Image Area" : "Open Image Area"}
