@@ -1,5 +1,5 @@
 "use client";
-import { useId, useRef, useState } from "react";
+import { useId, useRef, useState, useEffect } from "react";
 import { ArrowUpIcon, XMarkIcon } from "@heroicons/react/24/solid";
 import { RectangleStackIcon, PhotoIcon } from "@heroicons/react/24/outline";
 import Image from "next/image";
@@ -8,70 +8,168 @@ import styles from "./chatbot.module.css";
 const MAX_IMAGES = 4;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"];
 
+// --- API Call for Image Analysis ---
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function analyzeImages(question: string, imageFiles: File[]): Promise<string[]> {
+	const formData = new FormData();
+	formData.append("question", question);
+	imageFiles.forEach((file: File) => formData.append("images", file));
+	const res = await fetch("/api/analyze-images", {
+		method: "POST",
+		body: formData,
+	});
+	if (!res.ok) {
+		const error = await res.json();
+		throw new Error(error?.error || "Server error");
+	}
+	const data = await res.json();
+	return data.results?.map((r: { response: string }) => r.response) || [];
+}
+
+// Demo mock Q&A pairs
+const MOCK_QA: { q: string; a: string }[] = [
+  {
+    q: "Are there any visible defects or issues?",
+    a: "No visible defects detected in any of the images.",
+  },
+  {
+    q: "Is these images of a used product or new?",
+    a: "All images appear to show new products.",
+  },
+  {
+    q: "How many books are on this image?",
+    a: "There are no books detected in any of the images."
+  }
+  // Add more mock Q&A pairs as needed
+];
+
 export default function ChatbotImageAnalysis() {
-	const titleId = useId();
-	const dropId = useId();
-	const [imageAreaOpen, setImageAreaOpen] = useState(true);
-	const [images, setImages] = useState<Array<{ url: string; file: File }>>([]);
-	const [error, setError] = useState<string>("");
-	const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatAreaRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const dropId = useId();
+  const [imageAreaOpen, setImageAreaOpen] = useState(true);
+  // Store only File objects in state, generate preview URLs on client
+  const [images, setImages] = useState<Array<File>>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [error, setError] = useState<string>("");
+  // Automatically clear error after 10 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError("") , 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-		// --- Image Uploader Logic ---
+  // Chat bubbles state
+  const [chat, setChat] = useState<Array<{ role: "user"|"assistant"; text: string }>>([]);
+  // Scroll chat area to bottom when chat updates
+  useEffect(() => {
+    if (chatAreaRef.current) {
+      chatAreaRef.current.scrollTop = chatAreaRef.current.scrollHeight;
+    }
+  }, [chat]);
+  const [inputValue, setInputValue] = useState("");
+  const [loading, setLoading] = useState(false);
 
-		// Handles file selection via the hidden file input (click-to-upload)
-		const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-			if (!e.target.files) return;
-			// Convert FileList to Array and process
-			processFiles(Array.from(e.target.files));
-		};
+  // ...existing logic for processFiles, handleAsk, handleRemoveImage, etc...
 
-		// Handles files dropped onto the dropzone (drag-and-drop)
-		const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-			e.preventDefault();
-			if (e.dataTransfer.files) {
-				// Convert FileList to Array and process
-				processFiles(Array.from(e.dataTransfer.files));
-			}
-		};
+  // --- Image Uploader Logic ---
 
-		// Processes selected or dropped files: validates, updates state, and handles errors
-		const processFiles = (files: File[]) => {
-			const newImages = [...images]; // Start with current images
-			let localError = "";
-			for (const file of files) {
-				// Enforce max image count
-				if (newImages.length >= MAX_IMAGES) {
-					localError = `You can only upload up to ${MAX_IMAGES} images.`;
-					break;
-				}
-				// Enforce accepted file types
-				if (!ACCEPTED_TYPES.includes(file.type)) {
-					localError = "Unsupported file type.";
-					break;
-				}
-				// Add valid image to state (URL for preview, File for future upload)
-				newImages.push({ url: URL.createObjectURL(file), file });
-			}
-			setError(localError); // Show error if any
-			setImages(newImages); // Update image previews
-		};
+  // Handles file selection via the hidden file input (click-to-upload)
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    // Convert FileList to Array and process
+    processFiles(Array.from(e.target.files));
+  };
 
-		// Removes an image from the preview grid and state
-		const handleRemoveImage = (idx: number) => {
-			setImages(prev => {
-				const updated = [...prev];
-				// Revoke object URL to free memory
-				URL.revokeObjectURL(updated[idx].url);
-				updated.splice(idx, 1);
-				return updated;
-			});
-			setError(""); // Clear any error
-		};
+  // Handles files dropped onto the dropzone (drag-and-drop)
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (e.dataTransfer.files) {
+      // Convert FileList to Array and process
+      processFiles(Array.from(e.dataTransfer.files));
+    }
+  };
 
-		// Triggers the hidden file input when dropzone is clicked
-		const handleClickDropzone = () => {
-			fileInputRef.current?.click();
-		};
+  // Processes selected or dropped files: validates, updates state, and handles errors
+  const processFiles = async (files: File[]) => {
+    const newImages: Array<File> = [...images];
+    let localError = "";
+    for (const file of files) {
+      if (newImages.length >= MAX_IMAGES) {
+        localError = `You can only upload up to ${MAX_IMAGES} images.`;
+        break;
+      }
+      if (!ACCEPTED_TYPES.includes(file.type)) {
+        localError = "Unsupported file type.";
+        break;
+      }
+      // Check for duplicates by name, size, lastModified
+      const isDuplicate = newImages.some(img =>
+        img.name === file.name &&
+        img.size === file.size &&
+        img.lastModified === file.lastModified
+      );
+      if (isDuplicate) {
+        localError = "Duplicate image detected. Please select different images.";
+        break;
+      }
+      newImages.push(file);
+    }
+    setError(localError);
+    setImages(localError ? images : newImages);
+  };
+
+  // Handles user question submission
+  const handleAsk = async (question: string, imageFiles: File[]) => {
+    if (imageFiles.length < 1 || imageFiles.length > 4) {
+      setError("Please upload 1-4 images to analyze. For comparison, use 2-4 images.");
+      return;
+    }
+    setChat((prev) => [...prev, { role: "user", text: question }]);
+    setLoading(true);
+    setChat((prev) => [...prev, { role: "assistant", text: "Analyzing images..." }]);
+    setTimeout(() => {
+      setChat((prev) => {
+        const updated = prev.slice(0, -1);
+        // Find mock answer for question
+        const mock = MOCK_QA.find(qapair => qapair.q.toLowerCase() === question.toLowerCase());
+        if (mock) {
+          updated.push({ role: "assistant", text: mock.a });
+        } else {
+          updated.push({ role: "assistant", text: "Mock LLM response: Images analyzed successfully." });
+        }
+        return updated;
+      });
+      setLoading(false);
+    }, 800); // Simulate network delay
+  };
+
+  // Removes an image from the preview grid and state
+  const handleRemoveImage = (idx: number) => {
+    setImages(prev => {
+      const updated = [...prev];
+      updated.splice(idx, 1);
+      return updated;
+    });
+    setError("");
+  };
+  // Generate preview URLs only on client when images change
+  useEffect(() => {
+    // Generate new preview URLs
+    const newPreviewUrls = images.map(file => URL.createObjectURL(file));
+    setPreviewUrls(newPreviewUrls);
+    // Cleanup only new URLs on unmount or images change
+    return () => {
+      newPreviewUrls.forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [images]);
+
+  // Triggers the hidden file input when dropzone is clicked
+  const handleClickDropzone = () => {
+    fileInputRef.current?.click();
+  };
 
 	return (
 		<div className="min-h-dvh bg-[#F0F7FF] text-gray-900">
@@ -94,22 +192,17 @@ export default function ChatbotImageAnalysis() {
 
 					{/* Chat and image area wrapper */}
 					<div className="flex flex-col flex-1 min-h-0">
-						{/* Chat area - always scrollable, flex-1 */}
-						<div className={`flex flex-col gap-3 flex-1 overflow-y-auto ${styles.chatScroll} bg-transparent`}>
-							{/* Assistant result pill (static placeholder) */}
-							<div className="w-fit rounded-full bg-purple-500/90 px-4 py-2 text-sm text-white">No issues were detected</div>
-							{/* User prompt bubble (static placeholder) */}
-							<div className="w-fit self-end rounded-full bg-white px-4 py-2 text-sm">Are there any visible defects or issues?</div>
-							{/* Add more bubbles here to test scroll */}
-							<div className="w-fit rounded-full bg-purple-500/90 px-4 py-2 text-sm text-white">No issues were detected</div>
-							<div className="w-fit self-end rounded-full bg-white px-4 py-2 text-sm">Are there any visible defects or issues?</div>
-							<div className="w-fit rounded-full bg-purple-500/90 px-4 py-2 text-sm text-white">No issues were detected</div>
-							<div className="w-fit self-end rounded-full bg-white px-4 py-2 text-sm">Are there any visible defects or issues?</div>
-							{/* Assistant result pill (static placeholder) */}
-							<div className="w-fit rounded-full bg-purple-500/90 px-4 py-2 text-sm text-white">No issues were detected</div>
-							{/* User prompt bubble (static placeholder) */}
-							<div className="w-fit self-end rounded-full bg-white px-4 py-2 text-sm">Are there any visible defects or issues?</div>
-						</div>
+            {/* Chat area - always scrollable, flex-1 */}
+            <div ref={chatAreaRef} className={`flex flex-col gap-3 flex-1 overflow-y-auto ${styles.chatScroll} bg-transparent`}>
+              {chat.map((bubble, idx) => (
+                <div
+                  key={idx}
+                  className={`w-fit rounded-full px-4 py-2 text-sm ${bubble.role === "assistant" ? "bg-purple-500/90 text-white" : "bg-white self-end"}`}
+                >
+                  {bubble.text}
+                </div>
+              ))}
+            </div>
 
 						{/* Image area - collapsible */}
 						{imageAreaOpen && (
@@ -123,16 +216,16 @@ export default function ChatbotImageAnalysis() {
 												className="relative aspect-square rounded-2xl border border-gray-200 bg-gray-50 shadow-inner group"
 											>
 												{/* If image exists, show preview, else show placeholder */}
-												{images[i] ? (
-													<>
-														<Image
-															src={images[i].url}
-															alt={`preview-${i}`}
-															fill
-															sizes="(max-width: 768px) 100vw, 33vw"
-															className="object-cover rounded-2xl transition duration-200 group-hover:opacity-40"
-															style={{ zIndex: 0 }}
-														/>
+                        {previewUrls[i] ? (
+                          <>
+                            <Image
+                              src={previewUrls[i]}
+                              alt={`preview-${i}`}
+                              fill
+                              sizes="(max-width: 768px) 100vw, 33vw"
+                              className="object-cover rounded-2xl transition duration-200 group-hover:opacity-40"
+                              style={{ zIndex: 0 }}
+                            />
                             <button
                               type="button"
                               className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200 z-10"
@@ -141,12 +234,12 @@ export default function ChatbotImageAnalysis() {
                             >
                               <XMarkIcon style={{ width: '90%', height: '90%' }} className="text-red-500" />
                             </button>
-													</>
-												) : (
-													<div className={`absolute inset-0 flex flex-col items-center justify-center gap-1 text-gray-400 ${styles.imagePreviewBlur}`}>
-														<PhotoIcon className="h-6 w-6" />
-													</div>
-												)}
+                          </>
+                        ) : (
+                          <div className={`absolute inset-0 flex flex-col items-center justify-center gap-1 text-gray-400 ${styles.imagePreviewBlur}`}>
+                            <PhotoIcon className="h-6 w-6" />
+                          </div>
+                        )}
 											</div>
 										))}
 									</div>
@@ -163,7 +256,7 @@ export default function ChatbotImageAnalysis() {
 											<RectangleStackIcon className="h-11 w-11 text-gray-500" />
 										</div>
 										<h3 id={dropId} className="text-2xl font-semibold text-gray-900">Drag and Drop or<br/>Click to add Images</h3>
-										<p className="mt-1 text-xs text-gray-500">Only 4 images can be used for comparison.</p>
+										<p className="mt-1 text-xs text-gray-500">Only 4 images can be uploaded at a time.</p>
 										<input
 											ref={fileInputRef}
 											type="file"
@@ -181,20 +274,32 @@ export default function ChatbotImageAnalysis() {
 					</div>
 
 					{/* Composer with expand/collapse button */}
-					<form className="mt-6 flex items-center gap-2">
-						<label htmlFor="ask" className="sr-only">Ask about your images</label>
-						<div className="relative flex-1">
-							<input
-								id="ask"
-								type="text"
-								placeholder="Ask me anything"
-								className="w-full rounded-full bg-white px-5 py-3 pr-14 text-md outline-none focus:ring-2 focus:ring-purple-700"
-							/>
+          <form
+            className="mt-6 flex items-center gap-2"
+            onSubmit={e => {
+              e.preventDefault();
+              if (inputValue.trim() && images.length >= 1 && images.length <= 4 && !loading) {
+                handleAsk(inputValue.trim(), images);
+                setInputValue("");
+              }
+            }}
+          >
+            <label htmlFor="ask" className="sr-only">Ask about your images</label>
+            <div className="relative flex-1">
+              <input
+                id="ask"
+                type="text"
+                placeholder="Ask about your image(s)"
+                className="w-full rounded-full bg-white px-5 py-3 pr-14 text-md outline-none focus:ring-2 focus:ring-purple-700"
+                value={inputValue}
+                onChange={e => setInputValue(e.target.value)}
+                disabled={loading}
+              />
               <div className="absolute right-[53px] top-1/2 -translate-y-1/2">
                 <button
                   type="button"
                   aria-label="Toggle image area"
-                  className="rounded-full bg-gray-200 px-4 py-2 text-sm font-medium text-gray-500 shadow hover:bg-gray-300 active:scale-95 transition cursor-pointer relative group"
+                  className="rounded-full bg-gray-200 px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-300 active:scale-95 transition cursor-pointer relative group"
                   onClick={() => setImageAreaOpen((open) => !open)}
                 >
                   {imageAreaOpen ? "Close Image Area" : "Open Image Area"}
@@ -205,9 +310,10 @@ export default function ChatbotImageAnalysis() {
               </div>
               <div className="absolute right-2 top-1/2 -translate-y-1/2">
                 <button
-                  type="button"
+                  type="submit"
                   aria-label="Send"
-                  className="rounded-full bg-emerald-200 p-2 shadow hover:bg-emerald-300 active:scale-95 cursor-pointer relative group"
+                  className="rounded-full bg-emerald-200 p-2 hover:bg-emerald-300 active:scale-95 cursor-pointer relative group"
+                  disabled={loading || !inputValue.trim() || images.length < 2 || images.length > 4}
                 >
                   <ArrowUpIcon className="h-5 w-5 text-emerald-700" />
                   <span className="absolute left-1/2 -translate-x-1/2 -top-8 z-20 whitespace-nowrap bg-black text-white text-xs rounded-lg px-3 py-1 opacity-0 group-hover:opacity-100 transition duration-200 shadow-lg pointer-events-none">
@@ -215,8 +321,8 @@ export default function ChatbotImageAnalysis() {
                   </span>
                 </button>
               </div>
-						</div>
-					</form>
+            </div>
+          </form>
 				</section>
 			</main>
 		</div>
