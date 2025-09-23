@@ -197,7 +197,6 @@ export default function ChatbotImageAnalysis() {
 				<section
 					aria-labelledby={titleId}
 					className={`rounded-2xl p-6 backdrop-blur flex flex-col ${styles.gradientSection}`}
-					style={{ maxHeight: "85vh" }}
 				>
 					<h2 id={titleId} className="sr-only">Image analysis workspace</h2>
 
@@ -240,7 +239,7 @@ export default function ChatbotImageAnalysis() {
                               onClick={() => handleRemoveImage(i)}
                               aria-label="Remove image"
                             >
-                              <XMarkIcon style={{ width: '90%', height: '90%' }} className="text-red-500" />
+                              <XMarkIcon className={`text-red-500 ${styles.xIconLarge}`} />
                             </button>
                           </>
                         ) : (
@@ -303,7 +302,7 @@ export default function ChatbotImageAnalysis() {
                                 onClick={() => handleRemoveImage(i)}
                                 aria-label="Remove image"
                               >
-                                <XMarkIcon style={{ width: '90%', height: '90%' }} className="text-red-500" />
+                                <XMarkIcon className={`text-red-500 ${styles.xIconLarge}`} />
                               </button>
                             </>
                           ) : (
