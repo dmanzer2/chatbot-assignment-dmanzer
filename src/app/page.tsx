@@ -10,10 +10,8 @@ export default function Home() {
         <p className="mt-2 text-slate-600">
           To proceed to the chatbot, click the button below.
         </p>
-        <Link href="/chatbot" passHref legacyBehavior>
-          <button className="mt-4 rounded-lg px-4 py-2 text-sm font-medium border hover:bg-slate-100">
-            Launch Image Analysis Chatbot
-          </button>
+        <Link href="/chatbot" className="mt-4 rounded-lg px-4 py-2 text-sm font-medium border hover:bg-slate-100 inline-block">
+          Launch Image Analysis Chatbot
         </Link>
       </div>
     </main>
