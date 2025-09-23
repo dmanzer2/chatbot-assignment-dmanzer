@@ -1,13 +1,13 @@
 /* Chatbot page-specific styles */
 
- .centeredCard {
-   position: fixed;
-   left: 50%;
-   transform: translateX(-50%);
-   bottom: 3%;
-   width: 100%;
-   max-width: 64rem;
-   padding-bottom: 32px; /* Ensure input is always visible */
+.centeredCard {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 3%;
+  width: 100%;
+  max-width: 64rem;
+  padding-bottom: 32px;
 }
 
 .gradientSection {
@@ -25,11 +25,6 @@
 
 .imagePreviewBlur:hover {
   filter: blur(2px);
-}
-
-.xIcon {
-  height: 90%;
-  width: 90%;
 }
 
 .dropzone {

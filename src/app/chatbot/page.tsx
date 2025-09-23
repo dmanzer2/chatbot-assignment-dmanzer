@@ -8,7 +8,7 @@ import styles from "./chatbot.module.css";
 const MAX_IMAGES = 4;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"];
 
-// --- API Call for Image Analysis ---
+// --- API Call for Image Analysis when using API key ---
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function analyzeImages(question: string, imageFiles: File[]): Promise<string[]> {
 	const formData = new FormData();
@@ -43,6 +43,16 @@ const MOCK_QA: { q: string; a: string }[] = [
   // Add more mock Q&A pairs as needed
 ];
 
+/**
+ * ChatbotImageAnalysis Component
+ * --------------------------------
+ * Main UI and logic for the BatchQuery Image Analysis Chatbot.
+ * - Handles image upload, preview, duplicate detection, and removal.
+ * - Manages chat bubbles for user questions and AI (mock or real) responses.
+ * - Integrates with backend API for image analysis (mock/demo or OpenAI Vision).
+ * - Provides responsive layout for mobile, tablet, and desktop.
+ * - Includes error handling, auto-dismiss, and intuitive controls.
+ */
 export default function ChatbotImageAnalysis() {
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -96,6 +106,7 @@ export default function ChatbotImageAnalysis() {
   const processFiles = async (files: File[]) => {
     const newImages: Array<File> = [...images];
     let localError = "";
+    // Validate each file
     for (const file of files) {
       if (newImages.length >= MAX_IMAGES) {
         localError = `You can only upload up to ${MAX_IMAGES} images.`;
@@ -337,6 +348,7 @@ export default function ChatbotImageAnalysis() {
 					{/* Composer with expand/collapse button */}
           <form
             className="mt-6 flex items-center gap-2"
+            // Validate user input
             onSubmit={e => {
               e.preventDefault();
               if (inputValue.trim() && images.length >= 1 && images.length <= 4 && !loading) {
