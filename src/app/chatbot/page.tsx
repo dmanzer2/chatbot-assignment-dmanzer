@@ -94,8 +94,6 @@ export default function ChatbotImageAnalysis() {
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ...existing logic for processFiles, handleAsk, handleRemoveImage, etc...
-
   // --- Image Uploader Logic ---
 
   // Handles file selection via the hidden file input (click-to-upload)
@@ -178,7 +176,7 @@ export default function ChatbotImageAnalysis() {
     });
     setError("");
   };
-  
+
   // Generate preview URLs only on client when images change
   useEffect(() => {
     // Generate new preview URLs
