@@ -58,10 +58,12 @@ export default function ChatbotImageAnalysis() {
   const titleId = useId();
   const dropId = useId();
   const [imageAreaOpen, setImageAreaOpen] = useState(true);
+
   // Store only File objects in state, generate preview URLs on client
   const [images, setImages] = useState<Array<File>>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [error, setError] = useState<string>("");
+
   // Automatically clear error after 10 seconds
   useEffect(() => {
     if (error) {
@@ -69,16 +71,26 @@ export default function ChatbotImageAnalysis() {
       return () => clearTimeout(timer);
     }
   }, [error]);
+
+  // Hidden file input ref for click-to-upload
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Chat bubbles state
   const [chat, setChat] = useState<Array<{ role: "user"|"assistant"; text: string }>>([]);
+
   // Scroll chat area to bottom when chat updates
   useEffect(() => {
-    if (chatAreaRef.current) {
-      chatAreaRef.current.scrollTop = chatAreaRef.current.scrollHeight;
+    if (imageAreaOpen && chatAreaRef.current) {
+      // Wait for DOM update and possible animation
+      const timeout = setTimeout(() => {
+        if (chatAreaRef.current) {
+          chatAreaRef.current.scrollTop = chatAreaRef.current.scrollHeight;
+        }
+      }, 100); // 100ms delay ensures layout is updated
+      return () => clearTimeout(timeout);
     }
-  }, [chat]);
+  }, [imageAreaOpen, chat]);
+
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -166,6 +178,7 @@ export default function ChatbotImageAnalysis() {
     });
     setError("");
   };
+  
   // Generate preview URLs only on client when images change
   useEffect(() => {
     // Generate new preview URLs
