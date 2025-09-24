@@ -145,7 +145,7 @@ export default function ChatbotImageAnalysis() {
   // Handles user question submission
   const handleAsk = async (question: string, imageFiles: File[]) => {
     if (imageFiles.length < 1 || imageFiles.length > 4) {
-      setError("Please upload 1-4 images to analyze. For comparison, use 2-4 images.");
+      setError("Please upload 1-4 images to analyze.");
       return;
     }
     setChat((prev) => [...prev, { role: "user", text: question }]);
@@ -412,7 +412,7 @@ export default function ChatbotImageAnalysis() {
                   type="submit"
                   aria-label="Send"
                   className="rounded-full bg-emerald-200 p-2 hover:bg-emerald-300 active:scale-95 cursor-pointer relative group"
-                  disabled={loading || !inputValue.trim() || images.length < 2 || images.length > 4}
+                  disabled={loading || !inputValue.trim() || images.length < 1 || images.length > 4}
                 >
                   <ArrowUpIcon className="h-5 w-5 text-emerald-700" />
                   <span className="absolute left-1/2 -translate-x-1/2 -top-8 z-20 whitespace-nowrap bg-black text-white text-xs rounded-lg px-3 py-1 opacity-0 group-hover:opacity-100 transition duration-200 shadow-lg pointer-events-none">
